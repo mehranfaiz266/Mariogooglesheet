@@ -423,10 +423,10 @@ function createDashboardSheet() {
   if (statusRows.length) statusRange.setValues(statusRows);
   const pie = sheet
     .newChart()
-    .asPieChart()
+    .setChartType(Charts.ChartType.PIE)
     .addRange(statusRange)
     .setPosition(3, 4, 0, 0)
-    .setTitle('Status Distribution')
+    .setOption('title', 'Status Distribution')
     .build();
   sheet.insertChart(pie);
 
@@ -435,10 +435,10 @@ function createDashboardSheet() {
   if (stageRows.length) stageRange.setValues(stageRows);
   const colChart = sheet
     .newChart()
-    .asColumnChart()
+    .setChartType(Charts.ChartType.COLUMN)
     .addRange(stageRange)
     .setPosition(3, 10, 0, 0)
-    .setTitle('Stage Counts')
+    .setOption('title', 'Stage Counts')
     .build();
   sheet.insertChart(colChart);
 }
