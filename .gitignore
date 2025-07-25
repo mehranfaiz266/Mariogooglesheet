@@ -1,0 +1,11 @@
+# Ignore clasp project settings
+.clasp.json
+
+# Node dependencies
+node_modules/
+
+# Log files
+*.log
+
+# System files
+.DS_Store
