@@ -251,17 +251,27 @@ function updateOpportunity(formData, oppId) {
   apiFetch(`/opportunities/${oppId}`, 'put', payload);
 }
 
+function createGhlContact(formData) {
+  const payload = {
+    locationId: getLocation(),
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    email: formData.email,
+    phone: formData.phone,
+  };
+  const res = apiFetch('/contacts/', 'post', payload);
+  return res.id || (res.data && res.data.id);
+}
+
 function createGhlOpportunityAndLogToSheet(formData) {
+  const contactId = createGhlContact(formData);
   const payload = {
     locationId: getLocation(),
     name: formData.opportunityName,
     pipelineId: CONFIG.PIPELINE_ID,
     pipelineStageId: CONFIG.INITIAL_STAGE_ID,
     status: formData.initialOpportunityStatus || 'open',
-    firstName: formData.firstName,
-    lastName: formData.lastName,
-    email: formData.email,
-    phone: formData.phone,
+    contactId,
   };
   if (formData.proposalAmount) payload.monetaryValue = Number(formData.proposalAmount);
 
@@ -401,40 +411,77 @@ function createDashboardSheet() {
     status: headers.indexOf('Status'),
     stage: headers.indexOf('Stage'),
     proposal: headers.indexOf('Proposal Amount'),
+    source: headers.indexOf('Opportunity Source'),
   };
 
   const statusCounts = {};
   const stageCounts = {};
+  const sourceCounts = {};
   let totalProposal = 0;
   data.forEach(r => {
     const st = r[idx.status];
     if (st) statusCounts[st] = (statusCounts[st] || 0) + 1;
     const sg = r[idx.stage];
     if (sg) stageCounts[sg] = (stageCounts[sg] || 0) + 1;
+    const src = r[idx.source];
+    if (src) sourceCounts[src] = (sourceCounts[src] || 0) + 1;
     const amt = parseFloat(r[idx.proposal]);
     if (!isNaN(amt)) totalProposal += amt;
   });
 
-  sheet.getRange('A1').setValue('Total Proposal Amount');
-  sheet.getRange('B1').setValue(totalProposal);
+  // Summary metrics table
+  sheet.getRange('A1:B1').setValues([['Metric', 'Value']]);
+  sheet.getRange('A2:B3').setValues([
+    ['Total Opportunities', data.length],
+    ['Total Proposal Amount', totalProposal],
+  ]);
 
+  const statusOrder = ['open', 'won', 'lost', 'abandoned'];
+  statusOrder.forEach((status, i) => {
+    sheet.getRange(i + 5, 1).setValue(status.charAt(0).toUpperCase() + status.slice(1));
+    sheet.getRange(i + 5, 2).setValue(statusCounts[status] || 0);
+  });
 
- 
-
+  const stageStartRow = statusOrder.length + 7;
   const stageRows = Object.entries(stageCounts).map(([k, v]) => [k, v]);
-  const stageRange = sheet.getRange(3, 7, stageRows.length || 1, 2);
-  if (stageRows.length) stageRange.setValues(stageRows);
+  if (stageRows.length) {
+    sheet.getRange(stageStartRow, 1, stageRows.length, 2).setValues(stageRows);
+  }
 
- 
+  const sourceStartRow = stageStartRow + stageRows.length + 2;
+  const sourceRows = Object.entries(sourceCounts).map(([k, v]) => [k, v]);
+  if (sourceRows.length) {
+    sheet.getRange(sourceStartRow, 1, sourceRows.length, 2).setValues(sourceRows);
+  }
 
-  const stageTable = Charts.newDataTable();
-  stageTable.addColumn(Charts.ColumnType.STRING, 'Stage');
-  stageTable.addColumn(Charts.ColumnType.NUMBER, 'Count');
-  Object.entries(stageCounts).forEach(([k, v]) => stageTable.addRow([k, v]));
-  const colChart = Charts.newColumnChart()
-    .setTitle('Stage Counts')
-    .setDataTable(stageTable.build())
-    .setPosition(3, 8, 0, 0)
+  // Status Pie Chart
+  const statusChart = sheet.newChart()
+    .asPieChart()
+    .addRange(sheet.getRange(5, 1, statusOrder.length, 2))
+    .setPosition(1, 4, 0, 0)
+    .setOption('title', 'Opportunities by Status')
     .build();
-  sheet.insertChart(colChart);
+  sheet.insertChart(statusChart);
+
+  // Stage Column Chart
+  if (stageRows.length) {
+    const stageChart = sheet.newChart()
+      .asColumnChart()
+      .addRange(sheet.getRange(stageStartRow, 1, stageRows.length, 2))
+      .setPosition(statusOrder.length + 8, 4, 0, 0)
+      .setOption('title', 'Opportunities by Stage')
+      .build();
+    sheet.insertChart(stageChart);
+  }
+
+  // Source Pie Chart
+  if (sourceRows.length) {
+    const sourceChart = sheet.newChart()
+      .asPieChart()
+      .addRange(sheet.getRange(sourceStartRow, 1, sourceRows.length, 2))
+      .setPosition(stageStartRow + stageRows.length + 5, 4, 0, 0)
+      .setOption('title', 'Opportunities by Source')
+      .build();
+    sheet.insertChart(sourceChart);
+  }
 }
