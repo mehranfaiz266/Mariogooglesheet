@@ -20,3 +20,7 @@ This Google Apps Script manages EMRG leads in a Google Spreadsheet and syncs the
 - **🛠️ Initialize Leads Sheet** – rebuild the sheet structure.
 
 Editing a row marks it as `Pending` so it will be synchronized from the menu or by the optional 15‑minute trigger.
+
+## Development
+
+This project is built in Google Apps Script and does not use Node.js or `npm` packages. There are no automated tests, so you do not need to run `npm test`.
