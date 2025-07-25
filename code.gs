@@ -424,12 +424,6 @@ function createDashboardSheet() {
   const stageRows = Object.entries(stageCounts).map(([k, v]) => [k, v]);
   const stageRange = sheet.getRange(3, 7, stageRows.length || 1, 2);
   if (stageRows.length) stageRange.setValues(stageRows);
-  const colChart = sheet
-    .newChart()
-    .setChartType(Charts.ChartType.COLUMN)
-    .addRange(stageRange)
-    .setPosition(3, 10, 0, 0)
-    .setOption('title', 'Stage Counts')
 
  
 
@@ -441,7 +435,6 @@ function createDashboardSheet() {
     .setTitle('Stage Counts')
     .setDataTable(stageTable.build())
     .setPosition(3, 8, 0, 0)
- main
     .build();
   sheet.insertChart(colChart);
 }
