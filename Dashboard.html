@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Arial', sans-serif; padding: 16px; }
+      h2 { font-size: 18px; margin-bottom: 10px; }
+      .metric { margin: 6px 0; font-weight: bold; }
+      button {
+        margin-top: 12px;
+        width: 100%;
+        padding: 8px;
+        font-weight: bold;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover { background-color: #0056b3; }
+    </style>
+  </head>
+  <body>
+    <h2>📊 EMRG Lead Dashboard</h2>
+
+    <div class="metric" id="totalOpportunities">Loading...</div>
+    <div class="metric" id="openCount"></div>
+    <div class="metric" id="wonCount"></div>
+    <div class="metric" id="lostCount"></div>
+    <div class="metric" id="proposalTotal"></div>
+    <div class="metric" id="thisWeek"></div>
+    <div class="metric" id="thisMonth"></div>
+
+    <button onclick="google.script.run.showLeadForm()">➕ Add New Lead</button>
+    <button onclick="google.script.run.resyncAllRows()">🔄 Re-sync All Rows</button>
+
+    <script>
+      google.script.run.withSuccessHandler(updateUI).getDashboardData();
+
+      function updateUI(data) {
+        document.getElementById("totalOpportunities").innerText = `📌 Total: ${data.total}`;
+        document.getElementById("openCount").innerText = `🟢 Open: ${data.open}`;
+        document.getElementById("wonCount").innerText = `🏁 Won: ${data.won}`;
+        document.getElementById("lostCount").innerText = `❌ Lost: ${data.lost}`;
+        document.getElementById("proposalTotal").innerText = `💰 Total Proposal: $${data.totalProposal.toLocaleString()}`;
+        document.getElementById("thisWeek").innerText = `📆 This Week: ${data.thisWeek}`;
+        document.getElementById("thisMonth").innerText = `🗓️ This Month: ${data.thisMonth}`;
+      }
+    </script>
+  </body>
+</html>
