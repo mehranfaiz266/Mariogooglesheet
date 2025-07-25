@@ -94,6 +94,7 @@ function onOpen() {
     .addItem('📊 Show Dashboard', 'showSidebar')
     .addItem('➕ Add New Lead', 'showLeadForm')
     .addItem('🔄 Re-sync All Rows', 'resyncAllRows')
+    .addItem('📈 Build Dashboard Sheet', 'createDashboardSheet')
     .addItem('▶️ Enable Auto Sync', 'enableAutoSync')
     .addItem('⏹️ Disable Auto Sync', 'disableAutoSync')
     .addItem('🛠️ Initialize Leads Sheet', 'setupSheet')
@@ -377,4 +378,65 @@ function disableAutoSync() {
     }
   });
   PropertiesService.getScriptProperties().deleteProperty('AUTO_SYNC');
+}
+
+// ─── DASHBOARD SHEET ─────────────────────────────────────────────────────────
+function createDashboardSheet() {
+  const ss = SpreadsheetApp.getActive();
+  let sheet = ss.getSheetByName('Dashboard');
+  if (!sheet) {
+    sheet = ss.insertSheet('Dashboard');
+  } else {
+    sheet.clear();
+  }
+
+  const leads = ss.getSheetByName(SHEET_NAMES.leads);
+  if (!leads) {
+    SpreadsheetApp.getUi().alert('Leads sheet not found');
+    return;
+  }
+  const data = leads.getDataRange().getValues();
+  const headers = data.shift();
+  const idx = {
+    status: headers.indexOf('Status'),
+    stage: headers.indexOf('Stage'),
+    proposal: headers.indexOf('Proposal Amount'),
+  };
+
+  const statusCounts = {};
+  const stageCounts = {};
+  let totalProposal = 0;
+  data.forEach(r => {
+    const st = r[idx.status];
+    if (st) statusCounts[st] = (statusCounts[st] || 0) + 1;
+    const sg = r[idx.stage];
+    if (sg) stageCounts[sg] = (stageCounts[sg] || 0) + 1;
+    const amt = parseFloat(r[idx.proposal]);
+    if (!isNaN(amt)) totalProposal += amt;
+  });
+
+  sheet.getRange('A1').setValue('Total Proposal Amount');
+  sheet.getRange('B1').setValue(totalProposal);
+
+  const statusTable = Charts.newDataTable();
+  statusTable.addColumn(Charts.ColumnType.STRING, 'Status');
+  statusTable.addColumn(Charts.ColumnType.NUMBER, 'Count');
+  Object.entries(statusCounts).forEach(([k, v]) => statusTable.addRow([k, v]));
+  const pie = Charts.newPieChart()
+    .setTitle('Status Distribution')
+    .setDataTable(statusTable.build())
+    .setPosition(3, 1, 0, 0)
+    .build();
+  sheet.insertChart(pie);
+
+  const stageTable = Charts.newDataTable();
+  stageTable.addColumn(Charts.ColumnType.STRING, 'Stage');
+  stageTable.addColumn(Charts.ColumnType.NUMBER, 'Count');
+  Object.entries(stageCounts).forEach(([k, v]) => stageTable.addRow([k, v]));
+  const colChart = Charts.newColumnChart()
+    .setTitle('Stage Counts')
+    .setDataTable(stageTable.build())
+    .setPosition(3, 8, 0, 0)
+    .build();
+  sheet.insertChart(colChart);
 }
