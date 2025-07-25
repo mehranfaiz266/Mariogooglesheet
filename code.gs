@@ -415,26 +415,39 @@ function createDashboardSheet() {
     if (!isNaN(amt)) totalProposal += amt;
   });
 
+  // Summary metrics
   sheet.getRange('A1').setValue('Total Proposal Amount');
   sheet.getRange('B1').setValue(totalProposal);
 
+  const statusOrder = ['open', 'won', 'lost', 'abandoned'];
+  statusOrder.forEach((status, i) => {
+    sheet.getRange(i + 2, 1).setValue(status.charAt(0).toUpperCase() + status.slice(1));
+    sheet.getRange(i + 2, 2).setValue(statusCounts[status] || 0);
+  });
 
- 
-
+  // Stage counts table starting at row 7
   const stageRows = Object.entries(stageCounts).map(([k, v]) => [k, v]);
-  const stageRange = sheet.getRange(3, 7, stageRows.length || 1, 2);
-  if (stageRows.length) stageRange.setValues(stageRows);
+  if (stageRows.length) {
+    sheet.getRange(7, 1, stageRows.length, 2).setValues(stageRows);
+  }
 
- 
-
-  const stageTable = Charts.newDataTable();
-  stageTable.addColumn(Charts.ColumnType.STRING, 'Stage');
-  stageTable.addColumn(Charts.ColumnType.NUMBER, 'Count');
-  Object.entries(stageCounts).forEach(([k, v]) => stageTable.addRow([k, v]));
-  const colChart = Charts.newColumnChart()
-    .setTitle('Stage Counts')
-    .setDataTable(stageTable.build())
-    .setPosition(3, 8, 0, 0)
+  // Status Pie Chart
+  const statusChart = sheet.newChart()
+    .asPieChart()
+    .addRange(sheet.getRange(2, 1, statusOrder.length, 2))
+    .setPosition(1, 4, 0, 0)
+    .setOption('title', 'Opportunities by Status')
     .build();
-  sheet.insertChart(colChart);
+  sheet.insertChart(statusChart);
+
+  // Stage Column Chart
+  if (stageRows.length) {
+    const stageChart = sheet.newChart()
+      .asColumnChart()
+      .addRange(sheet.getRange(7, 1, stageRows.length, 2))
+      .setPosition(15, 1, 0, 0)
+      .setOption('title', 'Opportunities by Stage')
+      .build();
+    sheet.insertChart(stageChart);
+  }
 }
