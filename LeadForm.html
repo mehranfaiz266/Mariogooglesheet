@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+      body { padding: 20px; font-family: 'Inter', sans-serif; }
+      #form-loader { display: none; margin-left: 15px; }
+      .form-group label { font-weight: 500; margin-bottom: 5px; }
+      .form-control { border-radius: 5px; }
+      .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+      }
+      hr { margin-top: 25px; margin-bottom: 25px; border-top: 1px solid #eee; }
+    </style>
+  </head>
+  <body>
+    <h4>Add New EMRG Lead</h4>
+
+    <form id="lead-form">
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="firstName">First Name</label>
+          <input type="text" class="form-control" id="firstName">
+        </div>
+        <div class="form-group col-md-6">
+          <label for="lastName">Last Name</label>
+          <input type="text" class="form-control" id="lastName">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="email">Email <span style="color: red;">*</span></label>
+          <input type="email" class="form-control" id="email" required>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="phone">Phone</label>
+          <input type="tel" class="form-control" id="phone" placeholder="+1234567890">
+        </div>
+      </div>
+
+      <hr>
+      <h5>Opportunity Details</h5>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="opportunityName">Opportunity Name <span style="color: red;">*</span></label>
+          <input type="text" class="form-control" id="opportunityName" required>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="proposalAmount">Proposal Amount</label>
+          <input type="number" class="form-control" id="proposalAmount" placeholder="e.g., 10000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="opportunitySource">Opportunity Source</label>
+          <select class="form-control" id="opportunitySource">
+            <option value="">Select Source</option>
+            <option value="PartySlate">PartySlate</option>
+            <option value="Website">Website</option>
+            <option value="Instagram">Instagram</option>
+            <option value="Referral">Referral</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="eventDate">Event Date</label>
+          <input type="date" class="form-control" id="eventDate">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="guestCount">Guest Count</label>
+          <input type="number" class="form-control" id="guestCount" placeholder="e.g., 150">
+        </div>
+        <div class="form-group col-md-6">
+          <label for="estimatedBudget">Estimated Budget</label>
+          <input type="number" class="form-control" id="estimatedBudget" placeholder="e.g., 8000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="followUpDate">Follow-Up Date</label>
+          <input type="date" class="form-control" id="followUpDate">
+        </div>
+        <div class="form-group col-md-6">
+          <label for="probability">Probability</label>
+          <select class="form-control" id="probability">
+            <option value="">Select Probability</option>
+            <option value="Hot">Hot</option>
+            <option value="Warm">Warm</option>
+            <option value="Cold">Cold</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="eventType">Event Type</label>
+          <select class="form-control" id="eventType">
+            <option value="">Select Event Type</option>
+            <option value="Corporate Event">Corporate Event</option>
+            <option value="Social Event">Social Event</option>
+            <option value="Mitzvah">Mitzvah</option>
+            <option value="Fundraiser">Fundraiser</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="initialOpportunityStatus">Status</label>
+          <select class="form-control" id="initialOpportunityStatus">
+            <option value="">Select Status</option>
+            <option value="open">Open</option>
+            <option value="won">Won</option>
+            <option value="abandoned">Abandoned</option>
+            <option value="lost">Lost</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn btn-primary">Submit Lead</button>
+      <!-- Loader for form submission -->
+      <div id="form-loader" class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+      </div>
+    </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const leadForm = document.getElementById("lead-form");
+  leadForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    document.getElementById("form-loader").style.display = "inline-block";
+    document.getElementById("submit-btn").disabled = true;
+
+    const formData = {
+      firstName: document.getElementById("firstName").value,
+      lastName: document.getElementById("lastName").value,
+      email: document.getElementById("email").value,
+      phone: document.getElementById("phone").value,
+      opportunityName: document.getElementById("opportunityName").value,
+      proposalAmount: document.getElementById("proposalAmount").value,
+      opportunitySource: document.getElementById("opportunitySource").value,
+      eventDate: document.getElementById("eventDate").value,
+      guestCount: document.getElementById("guestCount").value,
+      estimatedBudget: document.getElementById("estimatedBudget").value,
+      followUpDate: document.getElementById("followUpDate").value,
+      probability: document.getElementById("probability").value,
+      eventType: document.getElementById("eventType").value,
+      initialOpportunityStatus: document.getElementById("initialOpportunityStatus").value
+    };
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        if(response.success) {
+          leadForm.reset();
+          google.script.host.close();
+        } else {
+          alert("Error: " + response.message);
+        }
+        document.getElementById("form-loader").style.display = "none";
+        document.getElementById("submit-btn").disabled = false;
+      })
+      .withFailureHandler((error) => {
+        alert("Script Error: " + (error.message || error));
+        document.getElementById("form-loader").style.display = "none";
+        document.getElementById("submit-btn").disabled = false;
+      })
+      .createGhlOpportunityAndLogToSheet(formData);
+  });
+});
+</script>
+
+  </body>
+</html>
