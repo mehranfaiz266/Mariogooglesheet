@@ -94,6 +94,8 @@ function onOpen() {
     .addItem('📊 Show Dashboard', 'showSidebar')
     .addItem('➕ Add New Lead', 'showLeadForm')
     .addItem('🔄 Re-sync All Rows', 'resyncAllRows')
+    .addItem('▶️ Enable Auto Sync', 'enableAutoSync')
+    .addItem('⏹️ Disable Auto Sync', 'disableAutoSync')
     .addItem('🛠️ Initialize Leads Sheet', 'setupSheet')
     .addToUi();
 }
@@ -105,12 +107,52 @@ function showLeadForm() {
   SpreadsheetApp.getUi().showModalDialog(html, 'Add New Lead');
 }
 
-function showLeadForm() {
-  const html = HtmlService.createHtmlOutput('<p>Lead form goes here.</p>')
-    .setWidth(600)
-    .setHeight(700);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Add New Lead');
+function showSidebar() {
+  const html = HtmlService.createHtmlOutputFromFile('Dashboard')
+    .setTitle('EMRG Dashboard')
+    .setWidth(300);
+  SpreadsheetApp.getUi().showSidebar(html);
 }
+
+function getDashboardData() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.leads);
+  if (!sheet) return {};
+  const data = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  const idx = {
+    status: headers.indexOf('Status'),
+    proposal: headers.indexOf('Proposal Amount'),
+    eventDate: headers.indexOf('Event Date'),
+  };
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const summary = {
+    total: data.length,
+    open: 0,
+    won: 0,
+    lost: 0,
+    totalProposal: 0,
+    thisWeek: 0,
+    thisMonth: 0,
+  };
+  data.forEach(row => {
+    const status = row[idx.status];
+    if (status === 'open') summary.open++;
+    if (status === 'won') summary.won++;
+    if (status === 'lost' || status === 'abandoned') summary.lost++;
+    const amount = parseFloat(row[idx.proposal]);
+    if (!isNaN(amount)) summary.totalProposal += amount;
+    const date = row[idx.eventDate];
+    if (date instanceof Date && !isNaN(date)) {
+      if (date >= startOfWeek && date <= today) summary.thisWeek++;
+      if (date >= startOfMonth && date <= today) summary.thisMonth++;
+    }
+  });
+  return summary;
+}
+
 
 // ─── INSTALLABLE ONEDIT TRIGGER ───────────────────────────────────────────────
 function onEditTrigger(e) {
@@ -124,10 +166,7 @@ function onEditTrigger(e) {
 
   const syncCol = colIndex(headers, 'Sync?');
   const syncCell = sheet.getRange(e.range.getRow(), syncCol);
-  syncCell.clearContent();
-  syncCell.setBackground(null);
-
-  syncRow(sheet, headers, e.range.getRow(), false);
+  syncCell.setValue('Pending').setBackground('#fff3cd');
 }
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
@@ -143,13 +182,14 @@ function syncRow(sheet, headers, row, silent = false) {
   const reasonCell = sheet.getRange(row, reasonCol);
 
   const resetRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['True'], true).setAllowInvalid(false).build();
+    .requireValueInList(['Pending', '✅ Success', '❌ Failed'], true)
+    .setAllowInvalid(false).build();
 
   if (!oppId) {
     syncCell.setValue('❌ Failed').clearDataValidations();
     syncCell.setBackground('#f8d7da');
     reasonCell.setValue('Missing Opportunity ID');
-    return;
+    return 'fail';
   }
 
   try {
@@ -158,28 +198,32 @@ function syncRow(sheet, headers, row, silent = false) {
     syncCell.setBackground('#d4edda');
     reasonCell.clearContent();
     if (!silent) SpreadsheetApp.getUi().toast(`✅ Row ${row} synced.`);
+    return 'ok';
   } catch (err) {
     logErrorToSheet('syncRow', err);
     syncCell.setValue('❌ Failed').clearDataValidations();
     syncCell.setBackground('#f8d7da');
     reasonCell.setValue(err.message);
     if (!silent) SpreadsheetApp.getUi().toast(`❌ Sync failed: ${err.message}`, 'Error');
+    return 'fail';
   }
 }
 
 function resyncAllRows() {
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.leads);
   const headers = getHeaders(sheet);
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues();
+  const syncCol = colIndex(headers, 'Sync?');
   let success = 0, failed = 0;
+  const lastRow = sheet.getLastRow();
 
-  data.forEach((_, i) => {
-    const result = syncRow(sheet, headers, i + 2, true);
-    if (result === 'ok') success++;
-    else failed++;
-  });
+  for (let row = 2; row <= lastRow; row++) {
+    if (sheet.getRange(row, syncCol).getValue() === 'Pending') {
+      const result = syncRow(sheet, headers, row, true);
+      if (result === 'ok') success++; else failed++;
+    }
+  }
 
-  SpreadsheetApp.getUi().alert(`🔄 Resync completed:\n✅ ${success} successful\n❌ ${failed} failed`);
+  SpreadsheetApp.getUi().alert(`🔄 Sync completed:\n✅ ${success} successful\n❌ ${failed} failed`);
 }
 
 // ─── GHL OPPORTUNITY ──────────────────────────────────────────────────────────
@@ -206,6 +250,65 @@ function updateOpportunity(formData, oppId) {
   apiFetch(`/opportunities/${oppId}`, 'put', payload);
 }
 
+function createGhlOpportunityAndLogToSheet(formData) {
+  const payload = {
+    locationId: getLocation(),
+    name: formData.opportunityName,
+    pipelineId: CONFIG.PIPELINE_ID,
+    pipelineStageId: CONFIG.INITIAL_STAGE_ID,
+    status: formData.initialOpportunityStatus || 'open',
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    email: formData.email,
+    phone: formData.phone,
+  };
+  if (formData.proposalAmount) payload.monetaryValue = Number(formData.proposalAmount);
+
+  const customFields = [];
+  Object.entries(CONFIG.CUSTOM_OPPORTUNITY_FIELDS).forEach(([label, id]) => {
+    const val = formData[label.camelize()];
+    if (val !== undefined && val !== '') {
+      customFields.push({ id, value: val });
+    }
+  });
+  if (customFields.length) payload.customFields = customFields;
+
+  try {
+    const res = apiFetch('/opportunities/', 'post', payload);
+    const oppId = res.id || (res.data && res.data.id);
+    const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.leads);
+    const headers = getHeaders(sheet);
+    const row = Array(headers.length).fill('');
+    const set = (name, val) => {
+      const idx = headers.indexOf(name);
+      if (idx >= 0) row[idx] = val;
+    };
+    set('Opportunity ID', oppId);
+    set('Date Received', new Date());
+    set('Stage', 'New Inquiry');
+    set('Status', payload.status);
+    set('Opportunity Name', formData.opportunityName);
+    set('Opportunity Source', formData.opportunitySource);
+    set('Event Date', formData.eventDate);
+    set('Guest Count', formData.guestCount);
+    set('Proposal Amount', formData.proposalAmount);
+    set('Estimated Budget', formData.estimatedBudget);
+    set('Follow-Up Date', formData.followUpDate);
+    set('Probability', formData.probability);
+    set('Event Type', formData.eventType);
+    set('First Name', formData.firstName);
+    set('Last Name', formData.lastName);
+    set('Email', formData.email);
+    set('Phone', formData.phone);
+    set('Sync?', '✅ Success');
+    sheet.appendRow(row);
+    return { success: true, id: oppId };
+  } catch (err) {
+    logErrorToSheet('createGhlOpportunityAndLogToSheet', err);
+    return { success: false, message: err.message };
+  }
+}
+
 // ─── SHEET SETUP ──────────────────────────────────────────────────────────────
 function setupSheet() {
   const ss = SpreadsheetApp.getActive();
@@ -230,7 +333,7 @@ function setupSheet() {
     'Opportunity Source': ['PartySlate', 'Website', 'Instagram', 'Referral', 'Other'],
     'Probability': ['Hot', 'Warm', 'Cold'],
     'Event Type': ['Corporate Event', 'Social Event', 'Mitzvah', 'Fundraiser', 'Other'],
-    'Sync?': ['True']
+    'Sync?': ['Pending', '✅ Success', '❌ Failed']
   };
 
   Object.entries(dropdowns).forEach(([col, list]) => {
@@ -255,4 +358,23 @@ function logErrorToSheet(func, err) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.errorLog);
   if (!sheet) return;
   sheet.appendRow([new Date(), func, err.stack || err.message || err.toString()]);
+}
+
+// ─── AUTO SYNC TRIGGER ───────────────────────────────────────────────────────
+function enableAutoSync() {
+  disableAutoSync();
+  ScriptApp.newTrigger('resyncAllRows')
+    .timeBased()
+    .everyMinutes(15)
+    .create();
+  PropertiesService.getScriptProperties().setProperty('AUTO_SYNC', 'true');
+}
+
+function disableAutoSync() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'resyncAllRows') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  PropertiesService.getScriptProperties().deleteProperty('AUTO_SYNC');
 }
