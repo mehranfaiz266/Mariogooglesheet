@@ -16,6 +16,7 @@ This Google Apps Script manages EMRG leads in a Google Spreadsheet and syncs the
 - **📊 Show Dashboard** – view summary metrics in a sidebar.
 - **➕ Add New Lead** – open a form to create a lead and log it to the sheet.
 - **🔄 Re-sync All Rows** – update GoHighLevel with changes from the sheet.
+- **📈 Build Dashboard Sheet** – generate a `Dashboard` sheet with charts.
 - **🛠️ Initialize Leads Sheet** – rebuild the sheet structure.
 
 Editing a row marks it as `Pending` so it will be synchronized from the menu or by the optional 15‑minute trigger.
