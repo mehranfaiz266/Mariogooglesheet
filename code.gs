@@ -418,17 +418,8 @@ function createDashboardSheet() {
   sheet.getRange('A1').setValue('Total Proposal Amount');
   sheet.getRange('B1').setValue(totalProposal);
 
-  const statusRows = Object.entries(statusCounts).map(([k, v]) => [k, v]);
-  const statusRange = sheet.getRange(3, 1, statusRows.length || 1, 2);
-  if (statusRows.length) statusRange.setValues(statusRows);
-  const pie = sheet
-    .newChart()
-    .setChartType(Charts.ChartType.PIE)
-    .addRange(statusRange)
-    .setPosition(3, 4, 0, 0)
-    .setOption('title', 'Status Distribution')
-    .build();
-  sheet.insertChart(pie);
+
+ 
 
   const stageRows = Object.entries(stageCounts).map(([k, v]) => [k, v]);
   const stageRange = sheet.getRange(3, 7, stageRows.length || 1, 2);
@@ -439,6 +430,18 @@ function createDashboardSheet() {
     .addRange(stageRange)
     .setPosition(3, 10, 0, 0)
     .setOption('title', 'Stage Counts')
+
+ 
+
+  const stageTable = Charts.newDataTable();
+  stageTable.addColumn(Charts.ColumnType.STRING, 'Stage');
+  stageTable.addColumn(Charts.ColumnType.NUMBER, 'Count');
+  Object.entries(stageCounts).forEach(([k, v]) => stageTable.addRow([k, v]));
+  const colChart = Charts.newColumnChart()
+    .setTitle('Stage Counts')
+    .setDataTable(stageTable.build())
+    .setPosition(3, 8, 0, 0)
+ main
     .build();
   sheet.insertChart(colChart);
 }
