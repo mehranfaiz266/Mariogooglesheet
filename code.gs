@@ -259,12 +259,24 @@ function createGhlContact(formData) {
     email: formData.email,
     phone: formData.phone,
   };
+
   const res = apiFetch('/contacts/', 'post', contactPayload);
-  return res.id || (res.data && res.data.id);
+  const contactId =
+    res.id ||
+    (res.data && res.data.id) ||
+    (res.contact && res.contact.id) ||
+    (res.data && res.data.contact && res.data.contact.id);
+
+  if (!contactId) {
+    throw new Error('Failed to create contact: no ID returned');
+  }
+
+  return String(contactId);
 }
 
 function createGhlOpportunityAndLogToSheet(formData) {
   const contactId = createGhlContact(formData);
+  if (!contactId) throw new Error('Failed to create contact');
   const payload = {
     locationId: getLocation(),
     name: formData.opportunityName,
