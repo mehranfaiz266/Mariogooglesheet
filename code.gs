@@ -53,14 +53,27 @@ function colIndex(headers, name) {
   return idx + 1;
 }
 
+function getProjectProperty(key) {
+  const stores = [
+    PropertiesService.getScriptProperties(),
+    PropertiesService.getDocumentProperties(),
+    PropertiesService.getUserProperties(),
+  ];
+  for (const store of stores) {
+    const val = store.getProperty(key);
+    if (val) return val;
+  }
+  return null;
+}
+
 function getToken() {
-  const token = PropertiesService.getScriptProperties().getProperty(CONFIG.TOKEN_PROPERTY);
+  const token = getProjectProperty(CONFIG.TOKEN_PROPERTY);
   if (!token) throw new Error('GHL API Token not set');
   return token;
 }
 
 function getLocation() {
-  const loc = PropertiesService.getScriptProperties().getProperty(CONFIG.LOCATION_PROPERTY);
+  const loc = getProjectProperty(CONFIG.LOCATION_PROPERTY);
   if (!loc) throw new Error('GHL Location ID not set');
   return loc;
 }
