@@ -251,17 +251,27 @@ function updateOpportunity(formData, oppId) {
   apiFetch(`/opportunities/${oppId}`, 'put', payload);
 }
 
+function createGhlContact(formData) {
+  const contactPayload = {
+    locationId: getLocation(),
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    email: formData.email,
+    phone: formData.phone,
+  };
+  const res = apiFetch('/contacts/', 'post', contactPayload);
+  return res.id || (res.data && res.data.id);
+}
+
 function createGhlOpportunityAndLogToSheet(formData) {
+  const contactId = createGhlContact(formData);
   const payload = {
     locationId: getLocation(),
     name: formData.opportunityName,
     pipelineId: CONFIG.PIPELINE_ID,
     pipelineStageId: CONFIG.INITIAL_STAGE_ID,
     status: formData.initialOpportunityStatus || 'open',
-    firstName: formData.firstName,
-    lastName: formData.lastName,
-    email: formData.email,
-    phone: formData.phone,
+    contactId: contactId,
   };
   if (formData.proposalAmount) payload.monetaryValue = Number(formData.proposalAmount);
 
