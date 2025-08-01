@@ -251,7 +251,28 @@ function updateOpportunity(formData, oppId) {
   apiFetch(`/opportunities/${oppId}`, 'put', payload);
 }
 
+function findExistingContactId(formData) {
+  const params = [];
+  if (formData.email) params.push('email=' + encodeURIComponent(formData.email));
+  if (formData.phone) params.push('phone=' + encodeURIComponent(formData.phone));
+  params.push('locationId=' + encodeURIComponent(getLocation()));
+  try {
+    const res = apiFetch('/contacts/?' + params.join('&'), 'get');
+    const contacts = res.contacts || res.data || [];
+    const first = Array.isArray(contacts) ? contacts[0] : contacts;
+    if (first) {
+      return first.id || (first.contact && first.contact.id);
+    }
+  } catch (err) {
+    // ignore errors when searching
+  }
+  return null;
+}
+
 function createGhlContact(formData) {
+  const existing = findExistingContactId(formData);
+  if (existing) return String(existing);
+
   const contactPayload = {
     locationId: getLocation(),
     firstName: formData.firstName,
@@ -260,18 +281,24 @@ function createGhlContact(formData) {
     phone: formData.phone,
   };
 
-  const res = apiFetch('/contacts/', 'post', contactPayload);
-  const contactId =
-    res.id ||
-    (res.data && res.data.id) ||
-    (res.contact && res.contact.id) ||
-    (res.data && res.data.contact && res.data.contact.id);
-
-  if (!contactId) {
-    throw new Error('Failed to create contact: no ID returned');
+  try {
+    const res = apiFetch('/contacts/', 'post', contactPayload);
+    const contactId =
+      res.id ||
+      (res.data && res.data.id) ||
+      (res.contact && res.contact.id) ||
+      (res.data && res.data.contact && res.data.contact.id);
+    if (!contactId) {
+      throw new Error('Failed to create contact: no ID returned');
+    }
+    return String(contactId);
+  } catch (err) {
+    if (/duplicated contacts/i.test(err.message)) {
+      const existingId = findExistingContactId(formData);
+      if (existingId) return String(existingId);
+    }
+    throw err;
   }
-
-  return String(contactId);
 }
 
 function createGhlOpportunityAndLogToSheet(formData) {
