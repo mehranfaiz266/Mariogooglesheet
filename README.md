@@ -15,6 +15,8 @@ This Google Apps Script manages EMRG leads in a Google Spreadsheet and syncs the
 
 - **📊 Show Dashboard** – view summary metrics in a sidebar.
 - **➕ Add New Lead** – open a form to create a lead and log it to the sheet.
+- The script now sends contact details inside a `contact` object when creating a
+  new opportunity to comply with recent LeadConnector API updates.
 - **🔄 Re-sync All Rows** – update GoHighLevel with changes from the sheet.
 - **📈 Build Dashboard Sheet** – generate a `Dashboard` sheet with charts.
 - **🛠️ Initialize Leads Sheet** – rebuild the sheet structure.

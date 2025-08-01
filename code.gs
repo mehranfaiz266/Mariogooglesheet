@@ -258,10 +258,12 @@ function createGhlOpportunityAndLogToSheet(formData) {
     pipelineId: CONFIG.PIPELINE_ID,
     pipelineStageId: CONFIG.INITIAL_STAGE_ID,
     status: formData.initialOpportunityStatus || 'open',
-    firstName: formData.firstName,
-    lastName: formData.lastName,
-    email: formData.email,
-    phone: formData.phone,
+    contact: {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+    }
   };
   if (formData.proposalAmount) payload.monetaryValue = Number(formData.proposalAmount);
 
