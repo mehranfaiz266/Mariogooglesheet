@@ -38,6 +38,11 @@ String.prototype.camelize = function () {
   return this.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, c) => c.toUpperCase());
 };
 
+function normalizePhone(phone) {
+  if (!phone) return '';
+  return String(phone).replace(/(?!^\+)\D+/g, '');
+}
+
 function getHeaders(sheet) {
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
@@ -252,19 +257,33 @@ function updateOpportunity(formData, oppId) {
 }
 
 function findExistingContactId(formData) {
-  const params = [];
-  if (formData.email) params.push('email=' + encodeURIComponent(formData.email));
-  if (formData.phone) params.push('phone=' + encodeURIComponent(formData.phone));
-  params.push('locationId=' + encodeURIComponent(getLocation()));
-  try {
-    const res = apiFetch('/contacts/?' + params.join('&'), 'get');
-    const contacts = res.contacts || res.data || [];
-    const first = Array.isArray(contacts) ? contacts[0] : contacts;
-    if (first) {
-      return first.id || (first.contact && first.contact.id);
+  const loc = encodeURIComponent(getLocation());
+  const email = formData.email && encodeURIComponent(formData.email);
+  const phone = normalizePhone(formData.phone);
+
+  const trySearch = (params) => {
+    try {
+      const res = apiFetch('/contacts/?' + params.join('&'), 'get');
+      const contacts = res.contacts || res.data || [];
+      const first = Array.isArray(contacts) ? contacts[0] : contacts;
+      if (first) return first.id || (first.contact && first.contact.id);
+    } catch (err) {
+      // ignore
     }
-  } catch (err) {
-    // ignore errors when searching
+    return null;
+  };
+
+  if (email && phone) {
+    const id = trySearch([`email=${email}`, `phone=${encodeURIComponent(phone)}`, `locationId=${loc}`]);
+    if (id) return String(id);
+  }
+  if (email) {
+    const id = trySearch([`email=${email}`, `locationId=${loc}`]);
+    if (id) return String(id);
+  }
+  if (phone) {
+    const id = trySearch([`phone=${encodeURIComponent(phone)}`, `locationId=${loc}`]);
+    if (id) return String(id);
   }
   return null;
 }
@@ -278,8 +297,9 @@ function createGhlContact(formData) {
     firstName: formData.firstName,
     lastName: formData.lastName,
     email: formData.email,
-    phone: formData.phone,
   };
+  const phone = normalizePhone(formData.phone);
+  if (phone) contactPayload.phone = phone;
 
   try {
     const res = apiFetch('/contacts/', 'post', contactPayload);
