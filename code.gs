@@ -160,8 +160,8 @@ function getDashboardData() {
 }
 
 
-// ─── INSTALLABLE ONEDIT TRIGGER ───────────────────────────────────────────────
-function onEditTrigger(e) {
+// ─── ON EDIT ──────────────────────────────────────────────────────────────────
+function onEdit(e) {
   const sheet = e.range.getSheet();
   if (sheet.getName() !== SHEET_NAMES.leads || e.range.getRow() === 1) return;
 
@@ -215,7 +215,7 @@ function syncRow(sheet, headers, row, silent = false) {
   }
 }
 
-function resyncAllRows() {
+function resyncAllRows(e) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.leads);
   const headers = getHeaders(sheet);
   const syncCol = colIndex(headers, 'Sync?');
@@ -229,7 +229,9 @@ function resyncAllRows() {
     }
   }
 
-  SpreadsheetApp.getUi().alert(`🔄 Sync completed:\n✅ ${success} successful\n❌ ${failed} failed`);
+  if (!e) {
+    SpreadsheetApp.getUi().alert(`🔄 Sync completed:\n✅ ${success} successful\n❌ ${failed} failed`);
+  }
 }
 
 // ─── GHL OPPORTUNITY ──────────────────────────────────────────────────────────
@@ -366,6 +368,9 @@ function createGhlOpportunityAndLogToSheet(formData) {
     set('Phone', formData.phone);
     set('Sync?', '✅ Success');
     sheet.appendRow(row);
+    // Ensure the generated opportunity ID is recorded in column A for future updates
+    const newRowIdx = sheet.getLastRow();
+    sheet.getRange(newRowIdx, 1).setValue(oppId);
     return { success: true, id: oppId };
   } catch (err) {
     logErrorToSheet('createGhlOpportunityAndLogToSheet', err);
