@@ -258,12 +258,14 @@ function updateOpportunity(formData, oppId) {
 
 function findExistingContactId(formData) {
   const loc = encodeURIComponent(getLocation());
-  const email = formData.email && encodeURIComponent(formData.email);
+  const queries = [];
+  if (formData.email) queries.push(formData.email);
   const phone = normalizePhone(formData.phone);
+  if (phone) queries.push(phone);
 
-  const trySearch = (params) => {
+  const trySearch = (query) => {
     try {
-      const res = apiFetch('/contacts/?' + params.join('&'), 'get');
+      const res = apiFetch(`/contacts/?locationId=${loc}&query=${encodeURIComponent(query)}`, 'get');
       const contacts = res.contacts || res.data || [];
       const first = Array.isArray(contacts) ? contacts[0] : contacts;
       if (first) return first.id || (first.contact && first.contact.id);
@@ -273,16 +275,8 @@ function findExistingContactId(formData) {
     return null;
   };
 
-  if (email && phone) {
-    const id = trySearch([`email=${email}`, `phone=${encodeURIComponent(phone)}`, `locationId=${loc}`]);
-    if (id) return String(id);
-  }
-  if (email) {
-    const id = trySearch([`email=${email}`, `locationId=${loc}`]);
-    if (id) return String(id);
-  }
-  if (phone) {
-    const id = trySearch([`phone=${encodeURIComponent(phone)}`, `locationId=${loc}`]);
+  for (const q of queries) {
+    const id = trySearch(q);
     if (id) return String(id);
   }
   return null;
