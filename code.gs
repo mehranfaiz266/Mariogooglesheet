@@ -341,7 +341,15 @@ function createGhlOpportunityAndLogToSheet(formData) {
 
   try {
     const res = apiFetch('/opportunities/', 'post', payload);
-    const oppId = res.id || (res.data && res.data.id);
+    const oppId =
+      res.id ||
+      (res.data && res.data.id) ||
+      (res.data && res.data.opportunity && res.data.opportunity.id) ||
+      (res.opportunity && res.opportunity.id);
+    if (!oppId) {
+      throw new Error('Failed to create opportunity: no ID returned');
+    }
+
     const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.leads);
     const headers = getHeaders(sheet);
     const row = Array(headers.length).fill('');
@@ -368,9 +376,21 @@ function createGhlOpportunityAndLogToSheet(formData) {
     set('Phone', formData.phone);
     set('Sync?', '✅ Success');
     sheet.appendRow(row);
+
     // Ensure the generated opportunity ID is recorded in column A for future updates
     const newRowIdx = sheet.getLastRow();
     sheet.getRange(newRowIdx, 1).setValue(oppId);
+
+    // Set the "Sync?" column background to light green to indicate success
+    const syncCol = colIndex(headers, 'Sync?');
+    const successCell = sheet.getRange(newRowIdx, syncCol);
+    successCell.setBackground('#d4edda');
+    const validationRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Pending', '✅ Success', '❌ Failed'], true)
+      .setAllowInvalid(false)
+      .build();
+    successCell.setDataValidation(validationRule);
+
     return { success: true, id: oppId };
   } catch (err) {
     logErrorToSheet('createGhlOpportunityAndLogToSheet', err);
