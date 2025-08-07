@@ -8,6 +8,9 @@ This Google Apps Script manages EMRG leads in a Google Spreadsheet and syncs the
 2. In **Project Properties → Script Properties**, add:
    - `GHL_PRIVATE_TOKEN` – your API token.
    - `GHL_LOCATION_ID` – your location ID.
+   
+   *(The script will also look for these keys in Document or User Properties if
+   not found in Script Properties.)*
 3. Attach the project to a spreadsheet and run **⚖️ EMRG Tools → Initialize Leads Sheet** to create the required sheets.
 4. Authorize the script when prompted.
 
